@@ -1,0 +1,31 @@
+# Render Blueprint: creates the PostgreSQL database and the API in one go.
+# Render dashboard → New → Blueprint → pick this repository.
+databases:
+  - name: attendease-db
+    plan: free
+    databaseName: attendease
+    user: attendease
+
+services:
+  - type: web
+    name: attendease-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: attendease-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: "1"
+      # Render asks for these when the Blueprint is created
+      - key: TIMEZONE
+        sync: false
+      - key: FIRST_ADMIN_EMAIL
+        sync: false
+      - key: FIRST_ADMIN_PASSWORD
+        sync: false

@@ -1,0 +1,16 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+gunicorn>=23; sys_platform != "win32"
+uvicorn-worker>=0.3; sys_platform != "win32"
+sqlalchemy[asyncio]>=2.0.36,<2.1
+asyncpg>=0.30
+alembic>=1.14
+pydantic>=2.9,<3
+pydantic-settings>=2.6
+email-validator>=2.2
+python-multipart>=0.0.18
+pyjwt>=2.10
+passlib[bcrypt]>=1.7.4
+# passlib 1.7.4 breaks with bcrypt>=4.1
+bcrypt==4.0.1
+tzdata>=2024.1

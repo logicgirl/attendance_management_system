@@ -1,0 +1,2 @@
+# Desktop client (attendease_client.py). The backend has its own requirements in backend/.
+httpx>=0.27
