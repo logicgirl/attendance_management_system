@@ -1,8 +1,8 @@
-import csv
 import datetime as dt
 import io
 
 import pytest
+from openpyxl import load_workbook
 
 from app.services.attendance import now_local
 
@@ -67,18 +67,36 @@ async def test_student_stats(client, lecturer_headers, course_id):
     assert stats["CS-002"]["absent"] == 1
 
 
-async def test_csv_export(client, lecturer_headers, course_id):
-    await register(client, lecturer_headers, course_id, {"CS-001": "Present"})
+async def test_excel_export(client, lecturer_headers, course_id):
+    await register(client, lecturer_headers, course_id, {"CS-001": "Present", "CS-002": "Absent"})
 
-    res = await client.get("/api/v1/reports/attendance.csv", headers=lecturer_headers)
+    res = await client.get(
+        f"/api/v1/reports/attendance.xlsx?course_id={course_id}", headers=lecturer_headers
+    )
     assert res.status_code == 200
-    assert res.headers["content-type"].startswith("text/csv")
-    assert "attachment" in res.headers["content-disposition"]
+    assert res.headers["content-type"].startswith("application/vnd.openxmlformats")
+    assert ".xlsx" in res.headers["content-disposition"]
 
-    rows = list(csv.reader(io.StringIO(res.text)))
-    assert rows[0][:4] == ["Record ID", "Student ID", "Full Name", "Course"]
-    assert rows[1][1:4] == ["CS-001", "Student A", "CS101"]
-    assert rows[1][7] == "Present"
+    wb = load_workbook(io.BytesIO(res.content))
+    assert wb.sheetnames == ["Attendance", "By student"]
+    sheet = wb["Attendance"]
+    assert "Course CS101" in sheet["A2"].value
+    header = [c.value for c in sheet[4]]
+    assert header[:7] == ["Date", "Day", "Time", "Student ID", "Full Name", "Course", "Status"]
+    rows = [[c.value for c in row] for row in sheet.iter_rows(min_row=5)]
+    assert {(r[3], r[6]) for r in rows} == {("CS-001", "Present"), ("CS-002", "Absent")}
+    assert rows[0][0].date() == now_local().date()  # a real date, not text
+
+    by_student = {r[0].value: r for r in wb["By student"].iter_rows(min_row=5)}
+    assert by_student["CS-001"][6].value == 1.0
+    assert by_student["CS-001"][6].number_format == "0.0%"
+    assert by_student["CS-002"][6].value == 0.0
+
+
+async def test_excel_export_with_no_records(client, lecturer_headers, course_id):
+    res = await client.get("/api/v1/reports/attendance.xlsx", headers=lecturer_headers)
+    sheet = load_workbook(io.BytesIO(res.content))["Attendance"]
+    assert sheet["A5"].value == "No records match these filters."
 
 
 async def test_daily_counts(client, lecturer_headers, course_id):

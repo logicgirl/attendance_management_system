@@ -162,8 +162,9 @@ class ApiClient:
     def student_stats(self, **filters) -> list[dict]:
         return self._get("/reports/students", **filters)
 
-    def export_csv(self, **filters) -> bytes:
-        return self._request("GET", "/reports/attendance.csv", params=_clean(filters)).content
+    def export_excel(self, **filters) -> bytes:
+        """The report as an .xlsx workbook."""
+        return self._request("GET", "/reports/attendance.xlsx", params=_clean(filters)).content
 
     # Users
     def users(self) -> list[dict]:

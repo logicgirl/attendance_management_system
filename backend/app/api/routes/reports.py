@@ -1,10 +1,12 @@
 import datetime as dt
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.access import get_course_for_user, lecturer_scope
 from app.api.deps import SessionDep, StaffUser
+from app.models import Course
 from app.schemas.attendance import (
     AttendanceSummary,
     CourseOverview,
@@ -13,7 +15,6 @@ from app.schemas.attendance import (
 )
 from app.services.attendance import (
     AttendanceFilters,
-    attendance_to_csv,
     filtered_attendance_query,
     get_course_overview,
     get_daily_counts,
@@ -21,6 +22,7 @@ from app.services.attendance import (
     get_summary,
     now_local,
 )
+from app.services.excel import attendance_workbook
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -66,12 +68,43 @@ async def student_stats(db: SessionDep, user: StaffUser, filters: FiltersDep):
     return await get_student_stats(db, filters, lecturer_scope(user))
 
 
-@router.get("/attendance.csv", response_class=Response)
-async def export_attendance_csv(db: SessionDep, user: StaffUser, filters: FiltersDep):
-    records = (await db.scalars(filtered_attendance_query(filters, lecturer_scope(user)))).all()
-    filename = f"attendance_report_{now_local().date().isoformat()}.csv"
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+async def describe_filters(db: SessionDep, filters: AttendanceFilters) -> str:
+    parts = []
+    if filters.course_id is not None:
+        course = await db.get(Course, filters.course_id)
+        parts.append(f"Course {course.code if course else filters.course_id}")
+    if filters.date_from or filters.date_to:
+        start = filters.date_from.isoformat() if filters.date_from else "the start"
+        end = filters.date_to.isoformat() if filters.date_to else "today"
+        parts.append(f"{start} to {end}")
+    if filters.status:
+        parts.append(f"{filters.status.value} only")
+    if filters.term:
+        parts.append(f"Term {filters.term}")
+    if filters.student_id:
+        parts.append(f"Student {filters.student_id}")
+    if filters.search:
+        parts.append(f"Matching “{filters.search}”")
+    return " · ".join(parts) if parts else "All records"
+
+
+@router.get("/attendance.xlsx", response_class=Response)
+async def export_attendance_excel(db: SessionDep, user: StaffUser, filters: FiltersDep):
+    """Excel workbook: the matching records, and attendance per student."""
+    if filters.course_id is not None:
+        await get_course_for_user(db, user, filters.course_id)
+    scope = lecturer_scope(user)
+    records = (await db.scalars(filtered_attendance_query(filters, scope))).all()
+    # Rates need every status, so the per-student sheet ignores a status filter
+    stats = await get_student_stats(db, replace(filters, status=None), scope)
+    now = now_local()
+    content = attendance_workbook(records, stats, await describe_filters(db, filters), now)
+    filename = f"attendance_report_{now.date().isoformat()}.xlsx"
     return Response(
-        content=attendance_to_csv(records),
-        media_type="text/csv",
+        content=content,
+        media_type=XLSX,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

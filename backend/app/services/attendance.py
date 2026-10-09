@@ -1,7 +1,4 @@
-import csv
 import datetime as dt
-import io
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import Select, case, func, or_, select
@@ -132,39 +129,6 @@ async def get_student_stats(
             }
         )
     return stats
-
-
-def attendance_to_csv(records: Sequence[Attendance]) -> str:
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(
-        [
-            "Record ID",
-            "Student ID",
-            "Full Name",
-            "Course",
-            "Day",
-            "Date",
-            "Time",
-            "Status",
-            "Academic Term",
-        ]
-    )
-    for r in records:
-        writer.writerow(
-            [
-                r.id,
-                r.student_id,
-                r.student_name,
-                r.course_code,
-                r.day,
-                r.date.isoformat(),
-                r.time.strftime("%I:%M %p"),
-                r.status.value,
-                r.term,
-            ]
-        )
-    return buffer.getvalue()
 
 
 async def get_daily_counts(

@@ -12,7 +12,7 @@ Built with FastAPI, SQLAlchemy 2.0 (async), PostgreSQL, Alembic and JWT authenti
 | View / add / edit students | ✓ | ✓ | |
 | Enroll students in a course | ✓ | own courses | |
 | Mark / edit attendance | ✓ | own courses | |
-| View reports, export CSV | ✓ | own courses | |
+| View reports, export to Excel | ✓ | own courses | |
 | Deactivate students, delete attendance records | ✓ | | |
 | View own attendance | | | ✓ |
 
@@ -92,7 +92,7 @@ set TEST_DATABASE_URL=postgresql+asyncpg://postgres:PASSWORD@localhost:5433/atte
 | PATCH, DELETE | `/terms/{id}` | Edit / delete a term (admin) |
 | GET | `/reports/summary?course_id=` | Roster size and the day's attendance counts |
 | GET | `/reports/students` | Attendance totals and rate per student (same filters as the list) |
-| GET | `/reports/attendance.csv` | CSV export (same filters as the list) |
+| GET | `/reports/attendance.xlsx` | Excel workbook: matching records and a per-student summary (same filters as the list) |
 | GET | `/audit-logs` | Who changed what, newest first (admin) |
 | GET | `/health` | Health check (no prefix) |
 

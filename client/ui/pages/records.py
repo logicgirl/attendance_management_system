@@ -1,3 +1,5 @@
+import datetime as dt
+import os
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -78,7 +80,7 @@ class RecordsPage(Page):
         results = card(self, padding=18)
         results.pack(fill="both", expand=True)
         self.header = card_header(results, "Attendance records", "")
-        button(self.header.actions, "Export CSV", self.export, "Primary").pack(side="right")
+        button(self.header.actions, "Export to Excel", self.export, "Primary").pack(side="right")
         button(self.header.actions, "Student report", self.student_report, "Secondary").pack(
             side="right", padx=(0, px(8))
         )
@@ -209,22 +211,29 @@ class RecordsPage(Page):
             return
         path = filedialog.asksaveasfilename(
             parent=self,
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv")],
-            initialfile="attendance_report.csv",
+            defaultextension=".xlsx",
+            filetypes=[("Excel workbook", "*.xlsx")],
+            initialfile=f"attendance_report_{dt.date.today().isoformat()}.xlsx",
             title="Save attendance report",
         )
         if not path:
             return
-        content = self.app.api.export_csv(**filters)
+        content = self.app.api.export_excel(**filters)
         try:
             with open(path, "wb") as fh:
                 fh.write(content)
         except OSError as exc:
-            self.app.toast(f"Couldn't save the file: {exc}", "error")
+            # Most often the file is still open in Excel
+            self.app.toast(
+                f"Couldn't save the file. Is it open in Excel? ({exc.strerror})", "error"
+            )
             return
-        rows = max(content.count(b"\n") - 1, 0)
-        self.app.toast(f"Exported {rows} record{'s' if rows != 1 else ''} to CSV.")
+        rows = len(self.records)
+        self.app.toast(f"Exported {rows} record{'s' if rows != 1 else ''} to Excel.")
+        try:
+            os.startfile(path)  # open it in Excel (or whatever handles .xlsx)
+        except (AttributeError, OSError):
+            pass  # Not Windows, or nothing installed to open it
 
     @safe
     def student_report(self):
