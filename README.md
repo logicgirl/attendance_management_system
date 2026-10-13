@@ -268,13 +268,32 @@ This produces `dist\AttendEase.exe`. To make an installer, copy `config.json.exa
 `config.json`, set your server's address, and compile `installer.iss` with
 [Inno Setup 6](https://jrsoftware.org/isinfo.php).
 
-### Deploy the backend online
+### Deploy the backend online (Render)
 
-The repository includes a Render Blueprint (`render.yaml`). In the Render dashboard choose
-**New → Blueprint** and select this repository. Render creates the database and the API, and
-asks for `TIMEZONE` (for example `Africa/Lagos`), `FIRST_ADMIN_EMAIL` and
-`FIRST_ADMIN_PASSWORD`. On start-up the server applies migrations and creates that admin account.
-Put the resulting `https://….onrender.com` address in `config.json` before building the installer.
+The repository includes a Render Blueprint (`render.yaml`) that creates the PostgreSQL database
+and the API together. The API runs from `backend/Dockerfile`, which applies database migrations
+and creates the first admin each time it starts.
+
+1. Push the code to GitHub.
+2. Sign in at [render.com](https://render.com) with GitHub, and allow Render to access the repository.
+3. Choose **New → Blueprint**, select the repository, and confirm the branch (`main`).
+4. Fill in the values Render asks for:
+   - `TIMEZONE`: for example `Africa/Lagos`
+   - `FIRST_ADMIN_EMAIL` and `FIRST_ADMIN_PASSWORD`: the admin account to create
+
+   `DATABASE_URL` and `SECRET_KEY` are filled in automatically.
+5. Click **Apply** and wait for the first deploy to finish (a few minutes).
+6. Open the service's address, e.g. `https://attendease-api.onrender.com/health`. It should show
+   `{"status":"ok"}`. The API documentation is at `/docs`.
+7. In the desktop app, click **Server settings** on the sign-in screen, enter that address, and
+   sign in with the admin account. Change the admin password afterwards (lock icon in the sidebar).
+
+Every push to `main` deploys again automatically. On the free plan the server sleeps when idle,
+so the first sign-in after a quiet spell can take up to a minute. Free databases are also
+time-limited, so check Render's current plan limits before relying on one.
+
+To ship the app pointed at the hosted server, copy `config.json.example` to `config.json`, put the
+`https://….onrender.com` address in it, then build the program and the installer.
 
 ### Moving data from the old version
 

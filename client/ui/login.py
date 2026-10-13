@@ -162,6 +162,7 @@ class LoginFrame(ttk.Frame):
             self.server_toggle.config(text="Server settings  ⌄")
 
     def sign_in(self):
+        self.error.config(foreground=C["danger"])
         email, password = self.email.get().strip(), self.password.get()
         server = self.server.get().strip()
         if not email or not password:
@@ -171,7 +172,11 @@ class LoginFrame(ttk.Frame):
             self.error.config(text="The server address must start with http:// or https://")
             return
 
-        self.error.config(text="")
+        # Hosted servers can take a while to wake up, so say so rather than look frozen
+        self.error.config(
+            text="Connecting… this can take up to a minute if the server was asleep.",
+            foreground=C["muted"],
+        )
         self.sign_in_button.config(text="Signing in…")
         self.sign_in_button.state(["disabled"])
         self.update_idletasks()
@@ -180,7 +185,7 @@ class LoginFrame(ttk.Frame):
             api.login(email, password)
         except ApiError as exc:
             api.close()
-            self.error.config(text=str(exc))
+            self.error.config(text=str(exc), foreground=C["danger"])
             self.sign_in_button.config(text="Sign in")
             self.sign_in_button.state(["!disabled"])
             return

@@ -35,7 +35,9 @@ def _error_message(response: httpx.Response) -> str:
 
 
 class ApiClient:
-    def __init__(self, base_url: str, timeout: float = 20.0):
+    # Generous, because free hosting plans put an idle server to sleep and the first
+    # request after that can take about a minute while it wakes up
+    def __init__(self, base_url: str, timeout: float = 90.0):
         self.base_url = base_url.rstrip("/")
         self._http = httpx.Client(base_url=self.base_url + API_PREFIX, timeout=timeout)
         self.user: dict | None = None
@@ -47,7 +49,10 @@ class ApiClient:
         try:
             response = self._http.request(method, path, **kwargs)
         except httpx.TimeoutException:
-            raise ApiError("The server took too long to respond. Please try again.") from None
+            raise ApiError(
+                "The server took too long to respond. If it was asleep it should be awake "
+                "now, so please try again."
+            ) from None
         except httpx.HTTPError:
             raise ApiError(
                 f"Cannot reach the server at {self.base_url}.\n"
